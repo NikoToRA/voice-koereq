@@ -1,0 +1,117 @@
+# .github/workflows/01-claude-implementation-simple.yml
+name: 🤖 Claude Implementation (Simple)
+
+on:
+  workflow_dispatch:
+    inputs:
+      feature:
+        description: 'Feature to implement'
+        required: true
+        type: choice
+        options:
+          - F1-起動画面
+          - F2-音声録音
+          - F3-文字起こし
+          - F4-AI医療アシスタント
+          - F5-音声合成
+          - F6-データ保存
+          - F7-サマリー生成
+          - F8-オフライン
+          - ALL-全機能
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  create-implementation-issue:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Load Feature Specification
+        id: feature
+        run: |
+          FEATURE_ID=$(echo "${{ github.event.inputs.feature }}" | cut -d'-' -f1)
+          echo "feature_id=${FEATURE_ID}" >> $GITHUB_OUTPUT
+          
+          # 仕様書から該当機能の詳細を抽出
+          python3 -c "
+          import yaml
+          with open('voice-koereq-spec.yaml', 'r', encoding='utf-8') as f:
+              spec = yaml.safe_load(f)
+          
+          feature = next(f for f in spec['features'] if f['id'] == '${FEATURE_ID}')
+          print(f\"feature_name={feature['name']}\")
+          print(f\"feature_type={feature['type']}\")
+          print(f\"feature_priority={feature['priority']}\")
+          print(f\"feature_description={feature['description']}\")
+          " >> $GITHUB_OUTPUT
+      
+      - name: Create Implementation Issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueBody = `@claude
+            
+            ## 🤖 Claude Auto Implementation Request
+            
+            ### Feature Details
+            - **Feature**: ${{ steps.feature.outputs.feature_name }} (${{ steps.feature.outputs.feature_id }})
+            - **Type**: ${{ steps.feature.outputs.feature_type }}
+            - **Priority**: ${{ steps.feature.outputs.feature_priority }}
+            - **Description**: ${{ steps.feature.outputs.feature_description }}
+            
+            ### Implementation Requirements
+            
+            Please implement the following components for the voice-koereq application:
+            
+            #### 1. iOS Implementation (SwiftUI)
+            Create the following files:
+            - \`ios/VoiceKoereq/Views/${{ steps.feature.outputs.feature_id }}View.swift\` - SwiftUI view with Japanese UI
+            - \`ios/VoiceKoereq/ViewModels/${{ steps.feature.outputs.feature_id }}ViewModel.swift\` - View model with Combine
+            - \`ios/VoiceKoereq/Services/${{ steps.feature.outputs.feature_id }}Service.swift\` - Service layer (if needed)
+            
+            Requirements:
+            - SwiftUI and Combine
+            - iOS 16+ compatibility
+            - Azure Speech SDK integration (if audio-related)
+            - Japanese UI text
+            - Error handling and loading states
+            - Accessibility support
+            - MVVM architecture
+            
+            #### 2. Android Implementation (Jetpack Compose)
+            Create the following files:
+            - \`android/app/src/main/kotlin/com/voicekoereq/ui/${{ steps.feature.outputs.feature_id }}Screen.kt\` - Compose UI
+            - \`android/app/src/main/kotlin/com/voicekoereq/viewmodel/${{ steps.feature.outputs.feature_id }}ViewModel.kt\` - ViewModel
+            - \`android/app/src/main/kotlin/com/voicekoereq/repository/${{ steps.feature.outputs.feature_id }}Repository.kt\` - Repository
+            
+            Requirements:
+            - Jetpack Compose and Kotlin
+            - Material Design 3
+            - Azure Speech SDK for Android (if audio-related)
+            - Coroutines and Flow
+            - Hilt for DI
+            - Japanese UI text
+            
+            #### 3. Tests
+            Create test files:
+            - \`ios/VoiceKoereqTests/${{ steps.feature.outputs.feature_id }}Tests.swift\` - iOS unit tests
+            - \`android/app/src/test/kotlin/com/voicekoereq/${{ steps.feature.outputs.feature_id }}Test.kt\` - Android unit tests
+            
+            Please generate complete, production-ready code for all components.
+            `;
+            
+            const { data: issue } = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🤖 Implement ${{ steps.feature.outputs.feature_name }} (${{ steps.feature.outputs.feature_id }})`,
+              body: issueBody,
+              labels: ['claude-implementation', 'auto-generated', '${{ steps.feature.outputs.feature_type }}']
+            });
+            
+            console.log(`Created issue #${issue.number}: ${issue.html_url}`);
+            core.setOutput('issue_number', issue.number);
+            core.setOutput('issue_url', issue.html_url);
