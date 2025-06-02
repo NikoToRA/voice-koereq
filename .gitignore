@@ -1,0 +1,38 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Python
+__pycache__/
+*.py[cod]
+.env
+venv/
+
+# iOS
+*.xcworkspace/
+*.pbxuser
+xcuserdata/
+DerivedData/
+*.ipa
+Pods/
+
+# Android
+*.iml
+.gradle/
+local.properties
+build/
+*.apk
+*.aab
+
+# Azure
+*.pfx
+*.publishsettings
+
+# Secrets
+secrets/
+*.key

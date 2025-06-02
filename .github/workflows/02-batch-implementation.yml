@@ -1,0 +1,48 @@
+# .github/workflows/02-batch-implementation.yml
+name: 🚀 Batch Implementation
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *'  # 毎日0時に実行
+
+jobs:
+  implement-all:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        feature: [F1, F2, F3, F4, F5, F6, F7, F8]
+      max-parallel: 2  # 同時実行を2つに制限
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Get Feature Details
+        id: details
+        run: |
+          python3 -c "
+          import yaml
+          with open('voice-koereq-spec.yaml', 'r', encoding='utf-8') as f:
+              spec = yaml.safe_load(f)
+          feature = next(f for f in spec['features'] if f['id'] == '${{ matrix.feature }}')
+          print(f\"name={feature['name']}\")
+          print(f\"type={feature['type']}\")
+          " >> $GITHUB_OUTPUT
+      
+      - name: Implement Feature ${{ matrix.feature }}
+        uses: NikoToRA/claude-code-action@main
+        with:
+          prompt: |
+            voice-koereq アプリの完全な実装を生成してください。
+
+            機能: ${{ steps.details.outputs.name }} (${{ matrix.feature }})
+            
+            以下のファイルを生成:
+            1. iOS実装 (SwiftUI)
+            2. Android実装 (Jetpack Compose)
+            3. 共有ロジック (Kotlin Multiplatform)
+            4. テストコード
+            5. ドキュメント
+
+            各ファイルは production-ready で、エラーハンドリング、ロギング、
+            パフォーマンス最適化を含めてください。
+          output_path: implementations/${{ matrix.feature }}/

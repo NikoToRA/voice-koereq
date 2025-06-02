@@ -1,0 +1,34 @@
+# .github/workflows/03-azure-deployment.yml
+name: 🚀 Azure Deployment
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'azure-functions/**'
+      - 'ios/**'
+      - 'android/**'
+
+jobs:
+  deploy-azure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      
+      - name: Deploy Functions
+        run: |
+          cd azure-functions
+          func azure functionapp publish voice-koereq-functions
+      
+      - name: Update App Configurations
+        run: |
+          # iOS/Android の設定を更新
+          az webapp config appsettings set \
+            --resource-group voice-koereq-rg \
+            --name voice-koereq-api \
+            --settings @appsettings.json

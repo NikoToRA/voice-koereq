@@ -1,0 +1,200 @@
+# .github/workflows/01-claude-implementation.yml
+name: 🤖 Claude Auto Implementation
+
+on:
+  workflow_dispatch:
+    inputs:
+      feature:
+        description: 'Feature to implement'
+        required: true
+        type: choice
+        options:
+          - F1-起動画面
+          - F2-音声録音
+          - F3-文字起こし
+          - F4-AI医療アシスタント
+          - F5-音声合成
+          - F6-データ保存
+          - F7-サマリー生成
+          - F8-オフライン
+          - ALL-全機能
+  
+  schedule:
+    - cron: '0 */6 * * *'  # 6時間ごとに自動実行
+
+jobs:
+  implement-with-claude:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Load Feature Specification
+        id: feature
+        run: |
+          FEATURE_ID=$(echo "${{ github.event.inputs.feature }}" | cut -d'-' -f1)
+          echo "feature_id=${FEATURE_ID}" >> $GITHUB_OUTPUT
+          
+          # 仕様書から該当機能の詳細を抽出
+          python3 -c "
+          import yaml
+          with open('voice-koereq-spec.yaml', 'r', encoding='utf-8') as f:
+              spec = yaml.safe_load(f)
+          
+          feature = next(f for f in spec['features'] if f['id'] == '${FEATURE_ID}')
+          print(f\"feature_name={feature['name']}\")
+          print(f\"feature_type={feature['type']}\")
+          print(f\"feature_priority={feature['priority']}\")
+          " >> $GITHUB_OUTPUT
+      
+      # iOS実装
+      - name: Generate iOS Implementation
+        uses: NikoToRA/claude-code-action@main
+        with:
+          prompt: |
+            voice-koereq iOS アプリの SwiftUI 実装を作成してください。
+
+            機能: ${{ steps.feature.outputs.feature_name }} (${{ steps.feature.outputs.feature_id }})
+            タイプ: ${{ steps.feature.outputs.feature_type }}
+
+            要件:
+            - SwiftUI と Combine を使用
+            - iOS 16+ 対応
+            - Azure Speech SDK を統合
+            - 日本語UIを優先
+            - エラー処理とローディング状態を含む
+            - アクセシビリティ対応
+            - MVVM アーキテクチャ
+
+            生成するファイル:
+            1. Views/${{ steps.feature.outputs.feature_id }}View.swift - SwiftUIビュー
+            2. ViewModels/${{ steps.feature.outputs.feature_id }}ViewModel.swift - ビューモデル
+            3. Services/${{ steps.feature.outputs.feature_id }}Service.swift - サービス層
+
+            完全に動作するSwiftコードを生成してください。
+          output_path: ios/VoiceKoereq/
+      
+      # Android実装
+      - name: Generate Android Implementation
+        uses: NikoToRA/claude-code-action@main
+        with:
+          prompt: |
+            voice-koereq Android アプリの Jetpack Compose 実装を作成してください。
+
+            機能: ${{ steps.feature.outputs.feature_name }} (${{ steps.feature.outputs.feature_id }})
+            タイプ: ${{ steps.feature.outputs.feature_type }}
+
+            要件:
+            - Jetpack Compose と Kotlin を使用
+            - Material Design 3
+            - Azure Speech SDK for Android を統合
+            - Coroutines と Flow で非同期処理
+            - Hilt で DI
+            - 日本語UIを優先
+
+            生成するファイル:
+            1. ui/${{ steps.feature.outputs.feature_id }}Screen.kt - Compose UI
+            2. viewmodel/${{ steps.feature.outputs.feature_id }}ViewModel.kt - ViewModel
+            3. repository/${{ steps.feature.outputs.feature_id }}Repository.kt - リポジトリ
+
+            完全に動作するKotlinコードを生成してください。
+          output_path: android/app/src/main/kotlin/com/voicekoereq/
+      
+      # 共有ロジック（Kotlin Multiplatform）
+      - name: Generate Shared Logic
+        uses: NikoToRA/claude-code-action@main
+        with:
+          prompt: |
+            voice-koereq の Kotlin Multiplatform 共有ロジックを実装してください。
+
+            機能: ${{ steps.feature.outputs.feature_name }} (${{ steps.feature.outputs.feature_id }})
+
+            要件:
+            - expect/actual パターンを使用
+            - 両プラットフォームで使えるAPI設計
+            - Coroutines Flow を使用
+            - シリアライズ可能なデータクラス
+
+            生成するファイル:
+            1. ${{ steps.feature.outputs.feature_id }}/Repository.kt - 共通インターフェース
+            2. ${{ steps.feature.outputs.feature_id }}/Models.kt - データモデル
+            3. ${{ steps.feature.outputs.feature_id }}/UseCase.kt - ビジネスロジック
+          output_path: shared/src/commonMain/kotlin/com/voicekoereq/
+      
+      # Azure Functions（必要な場合）
+      - name: Generate Azure Functions
+        if: contains(fromJson('["ai_service", "backend"]'), steps.feature.outputs.feature_type)
+        uses: NikoToRA/claude-code-action@main
+        with:
+          prompt: |
+            voice-koereq の Azure Function を C# で実装してください。
+
+            機能: ${{ steps.feature.outputs.feature_name }} (${{ steps.feature.outputs.feature_id }})
+
+            要件:
+            - .NET 8 Isolated Process
+            - Azure サービスとの統合（Speech Services, OpenAI, Storage）
+            - Application Insights でのロギング
+            - 適切なエラーハンドリング
+            - 日本語対応
+            - HTTPトリガー
+
+            完全な実装を含む ${{ steps.feature.outputs.feature_id }}Function.cs を生成してください。
+          output_path: azure-functions/
+      
+      # テストコード生成
+      - name: Generate Tests
+        uses: NikoToRA/claude-code-action@main
+        with:
+          prompt: |
+            ${{ steps.feature.outputs.feature_name }} のテストコードを生成してください。
+
+            含めるテスト:
+            【iOS】
+            - XCTest を使った Unit tests
+            - UI tests
+            - Mock を使った統合テスト
+            
+            【Android】
+            - JUnit テスト
+            - Compose UI テスト
+            - Mockito でのモック
+
+            それぞれのプラットフォーム用のテストファイルを生成してください。
+          output_path: tests/
+      
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "✨ Claude implementation: ${{ github.event.inputs.feature }}"
+          title: "🤖 [Claude] ${{ github.event.inputs.feature }} Implementation"
+          body: |
+            ## Claude Auto-Generated Implementation
+            
+            ### 実装機能
+            - **機能**: ${{ steps.feature.outputs.feature_name }}
+            - **ID**: ${{ steps.feature.outputs.feature_id }}
+            - **タイプ**: ${{ steps.feature.outputs.feature_type }}
+            - **優先度**: ${{ steps.feature.outputs.feature_priority }}
+            
+            ### 生成されたファイル
+            - iOS実装（SwiftUI + Combine）
+            - Android実装（Jetpack Compose + Kotlin）
+            - 共有ロジック（Kotlin Multiplatform）
+            - Azure Functions（該当する場合）
+            - テストコード
+            
+            ### レビューポイント
+            - [ ] コードの品質
+            - [ ] アーキテクチャの適切性
+            - [ ] エラーハンドリング
+            - [ ] 日本語対応
+            
+            ---
+            *This PR was automatically generated by Claude AI using claude-code-action*
+          branch: claude/${{ github.event.inputs.feature }}-${{ github.run_number }}
+          labels: |
+            claude-generated
+            auto-implementation
+            ${{ steps.feature.outputs.feature_type }}
+            ${{ steps.feature.outputs.feature_priority }}

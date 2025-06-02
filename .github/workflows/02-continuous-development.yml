@@ -1,0 +1,29 @@
+# .github/workflows/02-continuous-development.yml  
+name: 🔄 Continuous Development
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  check-and-implement:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Check Implementation Status
+        id: status
+        run: |
+          # 実装済み機能をチェック
+          python scripts/check_progress.py
+      
+      - name: Implement Next Feature
+        if: steps.status.outputs.next_feature != ''
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          python scripts/claude_implementation.py \
+            --feature "${{ steps.status.outputs.next_feature }}" \
+            --spec voice-koereq-spec.yaml \
+            --auto-mode
