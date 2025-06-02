@@ -22,6 +22,12 @@ on:
   schedule:
     - cron: '0 */6 * * *'  # 6時間ごとに自動実行
 
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  id-token: write
+
 jobs:
   implement-with-claude:
     runs-on: ubuntu-latest
@@ -46,121 +52,164 @@ jobs:
           print(f\"feature_priority={feature['priority']}\")
           " >> $GITHUB_OUTPUT
       
-      # iOS実装
-      - name: Generate iOS Implementation
-        uses: NikoToRA/claude-code-action@main
+      # Create implementation issue
+      - name: Create Implementation Issue
+        id: create_issue
+        uses: actions/github-script@v7
         with:
-          prompt: |
-            voice-koereq iOS アプリの SwiftUI 実装を作成してください。
-
-            機能: ${{ steps.feature.outputs.feature_name }} (${{ steps.feature.outputs.feature_id }})
-            タイプ: ${{ steps.feature.outputs.feature_type }}
-
-            要件:
-            - SwiftUI と Combine を使用
-            - iOS 16+ 対応
-            - Azure Speech SDK を統合
-            - 日本語UIを優先
-            - エラー処理とローディング状態を含む
-            - アクセシビリティ対応
-            - MVVM アーキテクチャ
-
-            生成するファイル:
-            1. Views/${{ steps.feature.outputs.feature_id }}View.swift - SwiftUIビュー
-            2. ViewModels/${{ steps.feature.outputs.feature_id }}ViewModel.swift - ビューモデル
-            3. Services/${{ steps.feature.outputs.feature_id }}Service.swift - サービス層
-
-            完全に動作するSwiftコードを生成してください。
-          output_path: ios/VoiceKoereq/
-      
-      # Android実装
-      - name: Generate Android Implementation
-        uses: NikoToRA/claude-code-action@main
-        with:
-          prompt: |
-            voice-koereq Android アプリの Jetpack Compose 実装を作成してください。
-
-            機能: ${{ steps.feature.outputs.feature_name }} (${{ steps.feature.outputs.feature_id }})
-            タイプ: ${{ steps.feature.outputs.feature_type }}
-
-            要件:
-            - Jetpack Compose と Kotlin を使用
-            - Material Design 3
-            - Azure Speech SDK for Android を統合
-            - Coroutines と Flow で非同期処理
-            - Hilt で DI
-            - 日本語UIを優先
-
-            生成するファイル:
-            1. ui/${{ steps.feature.outputs.feature_id }}Screen.kt - Compose UI
-            2. viewmodel/${{ steps.feature.outputs.feature_id }}ViewModel.kt - ViewModel
-            3. repository/${{ steps.feature.outputs.feature_id }}Repository.kt - リポジトリ
-
-            完全に動作するKotlinコードを生成してください。
-          output_path: android/app/src/main/kotlin/com/voicekoereq/
-      
-      # 共有ロジック（Kotlin Multiplatform）
-      - name: Generate Shared Logic
-        uses: NikoToRA/claude-code-action@main
-        with:
-          prompt: |
-            voice-koereq の Kotlin Multiplatform 共有ロジックを実装してください。
-
-            機能: ${{ steps.feature.outputs.feature_name }} (${{ steps.feature.outputs.feature_id }})
-
-            要件:
-            - expect/actual パターンを使用
-            - 両プラットフォームで使えるAPI設計
-            - Coroutines Flow を使用
-            - シリアライズ可能なデータクラス
-
-            生成するファイル:
-            1. ${{ steps.feature.outputs.feature_id }}/Repository.kt - 共通インターフェース
-            2. ${{ steps.feature.outputs.feature_id }}/Models.kt - データモデル
-            3. ${{ steps.feature.outputs.feature_id }}/UseCase.kt - ビジネスロジック
-          output_path: shared/src/commonMain/kotlin/com/voicekoereq/
-      
-      # Azure Functions（必要な場合）
-      - name: Generate Azure Functions
-        if: contains(fromJson('["ai_service", "backend"]'), steps.feature.outputs.feature_type)
-        uses: NikoToRA/claude-code-action@main
-        with:
-          prompt: |
-            voice-koereq の Azure Function を C# で実装してください。
-
-            機能: ${{ steps.feature.outputs.feature_name }} (${{ steps.feature.outputs.feature_id }})
-
-            要件:
-            - .NET 8 Isolated Process
-            - Azure サービスとの統合（Speech Services, OpenAI, Storage）
-            - Application Insights でのロギング
-            - 適切なエラーハンドリング
-            - 日本語対応
-            - HTTPトリガー
-
-            完全な実装を含む ${{ steps.feature.outputs.feature_id }}Function.cs を生成してください。
-          output_path: azure-functions/
-      
-      # テストコード生成
-      - name: Generate Tests
-        uses: NikoToRA/claude-code-action@main
-        with:
-          prompt: |
-            ${{ steps.feature.outputs.feature_name }} のテストコードを生成してください。
-
-            含めるテスト:
-            【iOS】
-            - XCTest を使った Unit tests
-            - UI tests
-            - Mock を使った統合テスト
+          script: |
+            const issueBody = `
+            ## 🤖 Claude Auto Implementation Request
             
-            【Android】
-            - JUnit テスト
-            - Compose UI テスト
-            - Mockito でのモック
-
-            それぞれのプラットフォーム用のテストファイルを生成してください。
-          output_path: tests/
+            ### Feature Details
+            - **Feature**: ${{ steps.feature.outputs.feature_name }} (${{ steps.feature.outputs.feature_id }})
+            - **Type**: ${{ steps.feature.outputs.feature_type }}
+            - **Priority**: ${{ steps.feature.outputs.feature_priority }}
+            
+            ### Implementation Requirements
+            
+            Please implement the following components for the voice-koereq application:
+            
+            #### 1. iOS Implementation (SwiftUI)
+            Create the following files under \`ios/VoiceKoereq/\`:
+            - \`Views/${{ steps.feature.outputs.feature_id }}View.swift\` - SwiftUI view
+            - \`ViewModels/${{ steps.feature.outputs.feature_id }}ViewModel.swift\` - View model
+            - \`Services/${{ steps.feature.outputs.feature_id }}Service.swift\` - Service layer
+            
+            Requirements:
+            - Use SwiftUI and Combine
+            - iOS 16+ compatibility
+            - Integrate Azure Speech SDK
+            - Japanese UI priority
+            - Include error handling and loading states
+            - Accessibility support
+            - MVVM architecture
+            
+            #### 2. Android Implementation (Jetpack Compose)
+            Create the following files under \`android/app/src/main/kotlin/com/voicekoereq/\`:
+            - \`ui/${{ steps.feature.outputs.feature_id }}Screen.kt\` - Compose UI
+            - \`viewmodel/${{ steps.feature.outputs.feature_id }}ViewModel.kt\` - ViewModel
+            - \`repository/${{ steps.feature.outputs.feature_id }}Repository.kt\` - Repository
+            
+            Requirements:
+            - Use Jetpack Compose and Kotlin
+            - Material Design 3
+            - Azure Speech SDK for Android integration
+            - Coroutines and Flow for async operations
+            - Hilt for dependency injection
+            - Japanese UI priority
+            
+            #### 3. Shared Logic (Kotlin Multiplatform)
+            Create the following files under \`shared/src/commonMain/kotlin/com/voicekoereq/\`:
+            - \`${{ steps.feature.outputs.feature_id }}/Repository.kt\` - Common interface
+            - \`${{ steps.feature.outputs.feature_id }}/Models.kt\` - Data models
+            - \`${{ steps.feature.outputs.feature_id }}/UseCase.kt\` - Business logic
+            
+            Requirements:
+            - Use expect/actual pattern
+            - API design for both platforms
+            - Coroutines Flow
+            - Serializable data classes
+            
+            #### 4. Azure Functions (if needed)
+            For backend/AI service features, create \`azure-functions/${{ steps.feature.outputs.feature_id }}Function.cs\`:
+            - .NET 8 Isolated Process
+            - Azure services integration (Speech Services, OpenAI, Storage)
+            - Application Insights logging
+            - Proper error handling
+            - Japanese language support
+            - HTTP triggers
+            
+            #### 5. Tests
+            Create comprehensive tests:
+            - iOS: XCTest unit tests, UI tests, integration tests with mocks
+            - Android: JUnit tests, Compose UI tests, Mockito mocks
+            
+            Please generate complete, working code for all components.
+            `;
+            
+            const { data: issue } = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🤖 Implement ${{ steps.feature.outputs.feature_name }} (${{ steps.feature.outputs.feature_id }})`,
+              body: issueBody,
+              labels: ['claude-implementation', 'auto-generated', '${{ steps.feature.outputs.feature_type }}']
+            });
+            
+            return issue.number;
+      
+      # Use Claude to implement based on the issue
+      - name: Claude Implementation
+        uses: NikoToRA/claude-code-action@main
+        with:
+          direct_prompt: |
+            Implement the feature described in issue #${{ steps.create_issue.outputs.result }}.
+            
+            Create all the necessary files as specified in the issue description.
+            Focus on creating production-ready, clean code that follows best practices for each platform.
+            
+            For iOS: Use modern SwiftUI with async/await where appropriate.
+            For Android: Use latest Jetpack Compose patterns with clean architecture.
+            For shared code: Ensure proper abstraction for both platforms.
+            
+            Include comprehensive error handling, loading states, and Japanese UI text.
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          anthropic_model: claude-3-5-sonnet-20241022
+          timeout_minutes: 30
+      
+      # Alternative approach: Create files directly and then PR
+      - name: Setup Implementation Branch
+        run: |
+          git checkout -b claude/${{ github.event.inputs.feature }}-${{ github.run_number }}
+          
+      - name: Create Implementation Structure
+        run: |
+          # Create directory structure
+          mkdir -p ios/VoiceKoereq/{Views,ViewModels,Services}
+          mkdir -p android/app/src/main/kotlin/com/voicekoereq/{ui,viewmodel,repository}
+          mkdir -p shared/src/commonMain/kotlin/com/voicekoereq/${{ steps.feature.outputs.feature_id }}
+          mkdir -p tests/{ios,android}
+          
+      - name: Generate Implementation Plan
+        id: implementation_plan
+        run: |
+          cat > implementation_plan.md << 'EOF'
+          # Implementation Plan for ${{ steps.feature.outputs.feature_name }}
+          
+          ## Feature ID: ${{ steps.feature.outputs.feature_id }}
+          ## Type: ${{ steps.feature.outputs.feature_type }}
+          
+          ### iOS Files to Generate:
+          1. ios/VoiceKoereq/Views/${{ steps.feature.outputs.feature_id }}View.swift
+          2. ios/VoiceKoereq/ViewModels/${{ steps.feature.outputs.feature_id }}ViewModel.swift
+          3. ios/VoiceKoereq/Services/${{ steps.feature.outputs.feature_id }}Service.swift
+          
+          ### Android Files to Generate:
+          1. android/app/src/main/kotlin/com/voicekoereq/ui/${{ steps.feature.outputs.feature_id }}Screen.kt
+          2. android/app/src/main/kotlin/com/voicekoereq/viewmodel/${{ steps.feature.outputs.feature_id }}ViewModel.kt
+          3. android/app/src/main/kotlin/com/voicekoereq/repository/${{ steps.feature.outputs.feature_id }}Repository.kt
+          
+          ### Shared Logic Files:
+          1. shared/src/commonMain/kotlin/com/voicekoereq/${{ steps.feature.outputs.feature_id }}/Repository.kt
+          2. shared/src/commonMain/kotlin/com/voicekoereq/${{ steps.feature.outputs.feature_id }}/Models.kt
+          3. shared/src/commonMain/kotlin/com/voicekoereq/${{ steps.feature.outputs.feature_id }}/UseCase.kt
+          
+          ### Test Files:
+          1. tests/ios/${{ steps.feature.outputs.feature_id }}Tests.swift
+          2. tests/android/${{ steps.feature.outputs.feature_id }}Test.kt
+          EOF
+      
+      - name: Commit Implementation Plan
+        run: |
+          git config user.name "Claude AI"
+          git config user.email "claude@anthropic.com"
+          git add .
+          git commit -m "📝 Add implementation plan for ${{ steps.feature.outputs.feature_name }}"
+      
+      - name: Push Branch
+        run: |
+          git push origin claude/${{ github.event.inputs.feature }}-${{ github.run_number }}
       
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v5
@@ -177,12 +226,17 @@ jobs:
             - **タイプ**: ${{ steps.feature.outputs.feature_type }}
             - **優先度**: ${{ steps.feature.outputs.feature_priority }}
             
+            ### 実装内容
+            This PR contains the implementation structure for the requested feature.
+            
+            Related Issue: #${{ steps.create_issue.outputs.result }}
+            
             ### 生成されたファイル
-            - iOS実装（SwiftUI + Combine）
-            - Android実装（Jetpack Compose + Kotlin）
-            - 共有ロジック（Kotlin Multiplatform）
-            - Azure Functions（該当する場合）
-            - テストコード
+            - [ ] iOS実装（SwiftUI + Combine）
+            - [ ] Android実装（Jetpack Compose + Kotlin）
+            - [ ] 共有ロジック（Kotlin Multiplatform）
+            - [ ] Azure Functions（該当する場合）
+            - [ ] テストコード
             
             ### レビューポイント
             - [ ] コードの品質
@@ -191,8 +245,9 @@ jobs:
             - [ ] 日本語対応
             
             ---
-            *This PR was automatically generated by Claude AI using claude-code-action*
+            *This PR was automatically generated by Claude AI*
           branch: claude/${{ github.event.inputs.feature }}-${{ github.run_number }}
+          base: main
           labels: |
             claude-generated
             auto-implementation
