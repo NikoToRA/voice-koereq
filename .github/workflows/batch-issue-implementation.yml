@@ -9,6 +9,11 @@ on:
         required: false
         default: 'all'
 
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
 jobs:
   prepare-issues:
     runs-on: ubuntu-latest
