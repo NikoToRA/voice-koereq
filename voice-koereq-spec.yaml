@@ -122,3 +122,52 @@ deployment:
     - container: Docker/Kubernetes
     - ci_cd: GitHub Actions/GitLab CI
     - monitoring: Datadog/New Relic
+
+features:
+  - id: F1
+    name: 起動画面
+    type: ui
+    priority: high
+    description: アプリケーション起動時の初期画面とユーザー認証
+    
+  - id: F2
+    name: 音声録音
+    type: audio_capture
+    priority: high
+    description: 音声の録音、一時停止、再開、停止機能
+    
+  - id: F3
+    name: 文字起こし
+    type: ai_service
+    priority: high
+    description: Azure Speech Servicesを使用した音声からテキストへの変換
+    
+  - id: F4
+    name: AI医療アシスタント
+    type: ai_service
+    priority: high
+    description: Azure OpenAIを使用した医療相談のAI応答
+    
+  - id: F5
+    name: 音声合成
+    type: ai_service
+    priority: medium
+    description: テキストから音声への変換（応答の読み上げ）
+    
+  - id: F6
+    name: データ保存
+    type: backend
+    priority: high
+    description: 録音データとテキストのクラウド保存
+    
+  - id: F7
+    name: サマリー生成
+    type: ai_service
+    priority: medium
+    description: 会話内容の要約とレポート生成
+    
+  - id: F8
+    name: オフライン
+    type: infrastructure
+    priority: low
+    description: オフライン時のデータ保存と同期機能
