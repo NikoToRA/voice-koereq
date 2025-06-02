@@ -1,0 +1,216 @@
+# .github/workflows/issue-driven-implementation.yml
+name: 🤖 Issue-Driven Implementation
+
+on:
+  issues:
+    types: [labeled]
+
+jobs:
+  implement-from-issue:
+    if: github.event.label.name == 'ready-to-implement'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Parse Issue Details
+        id: parse
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const title = issue.title;
+            
+            // [F1] のようなパターンから機能IDを抽出
+            const featureIdMatch = title.match(/\[([F\d]+)\]/);
+            const featureId = featureIdMatch ? featureIdMatch[1] : null;
+            
+            // 機能名を抽出
+            const featureName = title.replace(/\[[^\]]+\]\s*/, '');
+            
+            console.log(`Feature ID: ${featureId}`);
+            console.log(`Feature Name: ${featureName}`);
+            
+            core.setOutput('feature_id', featureId);
+            core.setOutput('feature_name', featureName);
+            core.setOutput('issue_number', issue.number);
+            
+            // Issueの本文から実装詳細を抽出
+            const body = issue.body || '';
+            const typeMatch = body.match(/`([^`]+)`/);
+            const featureType = typeMatch ? typeMatch[1] : 'feature';
+            core.setOutput('feature_type', featureType);
+      
+      - name: Comment on Issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: ${{ steps.parse.outputs.issue_number }},
+              body: `🤖 自動実装を開始します！\n\n実装対象: **${{ steps.parse.outputs.feature_name }}** (ID: ${{ steps.parse.outputs.feature_id }})\n\n進捗は [Actions](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}) で確認できます。`
+            });
+      
+      # iOS実装
+      - name: Generate iOS Implementation
+        uses: NikoToRA/claude-code-action@main
+        with:
+          prompt: |
+            voice-koereq iOS アプリの実装を作成してください。
+
+            機能: ${{ steps.parse.outputs.feature_name }} (${{ steps.parse.outputs.feature_id }})
+            Issue: #${{ steps.parse.outputs.issue_number }}
+
+            要件:
+            - SwiftUI と Combine を使用
+            - iOS 16+ 対応
+            - Azure Speech SDK を統合
+            - 日本語UIを優先
+            - エラー処理とローディング状態を含む
+            - アクセシビリティ対応
+            - MVVM アーキテクチャ
+
+            以下のファイルを生成:
+            1. Views/${{ steps.parse.outputs.feature_id }}View.swift
+            2. ViewModels/${{ steps.parse.outputs.feature_id }}ViewModel.swift
+            3. Services/${{ steps.parse.outputs.feature_id }}Service.swift
+
+            完全に動作する production-ready なコードを生成してください。
+          output_path: ios/VoiceKoereq/
+      
+      # Android実装
+      - name: Generate Android Implementation
+        uses: NikoToRA/claude-code-action@main
+        with:
+          prompt: |
+            voice-koereq Android アプリの実装を作成してください。
+
+            機能: ${{ steps.parse.outputs.feature_name }} (${{ steps.parse.outputs.feature_id }})
+            Issue: #${{ steps.parse.outputs.issue_number }}
+
+            要件:
+            - Jetpack Compose と Kotlin
+            - Material Design 3
+            - Azure Speech SDK for Android
+            - Coroutines と Flow
+            - Hilt で DI
+            - 日本語UIを優先
+
+            以下のファイルを生成:
+            1. ui/${{ steps.parse.outputs.feature_id }}Screen.kt
+            2. viewmodel/${{ steps.parse.outputs.feature_id }}ViewModel.kt
+            3. repository/${{ steps.parse.outputs.feature_id }}Repository.kt
+
+            完全に動作する production-ready なコードを生成してください。
+          output_path: android/app/src/main/kotlin/com/voicekoereq/
+      
+      # 共有ロジック
+      - name: Generate Shared Logic
+        uses: NikoToRA/claude-code-action@main
+        with:
+          prompt: |
+            voice-koereq の Kotlin Multiplatform 共有ロジックを実装してください。
+
+            機能: ${{ steps.parse.outputs.feature_name }} (${{ steps.parse.outputs.feature_id }})
+
+            要件:
+            - expect/actual パターン
+            - Coroutines Flow
+            - シリアライズ可能なデータクラス
+
+            以下のファイルを生成:
+            1. ${{ steps.parse.outputs.feature_id }}/Repository.kt
+            2. ${{ steps.parse.outputs.feature_id }}/Models.kt
+            3. ${{ steps.parse.outputs.feature_id }}/UseCase.kt
+          output_path: shared/src/commonMain/kotlin/com/voicekoereq/
+      
+      # テスト生成
+      - name: Generate Tests
+        uses: NikoToRA/claude-code-action@main
+        with:
+          prompt: |
+            ${{ steps.parse.outputs.feature_name }} のテストコードを生成してください。
+
+            【iOS】
+            - XCTest でユニットテスト
+            - SwiftUI のUIテスト
+            
+            【Android】
+            - JUnit テスト
+            - Compose UIテスト
+            - Mockito モック
+
+            高いカバレッジを目指したテストを生成してください。
+          output_path: tests/
+      
+      - name: Create Pull Request
+        id: cpr
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "✨ Implement ${{ steps.parse.outputs.feature_id }}: ${{ steps.parse.outputs.feature_name }}"
+          title: "🤖 [${{ steps.parse.outputs.feature_id }}] ${{ steps.parse.outputs.feature_name }} - Auto Implementation"
+          body: |
+            ## 🤖 自動実装
+            
+            ### 📋 Issue
+            Closes #${{ steps.parse.outputs.issue_number }}
+            
+            ### 🎯 実装機能
+            - **機能名**: ${{ steps.parse.outputs.feature_name }}
+            - **機能ID**: ${{ steps.parse.outputs.feature_id }}
+            - **タイプ**: ${{ steps.parse.outputs.feature_type }}
+            
+            ### 📁 生成されたファイル
+            
+            #### iOS
+            - [ ] `ios/VoiceKoereq/Views/${{ steps.parse.outputs.feature_id }}View.swift`
+            - [ ] `ios/VoiceKoereq/ViewModels/${{ steps.parse.outputs.feature_id }}ViewModel.swift`
+            - [ ] `ios/VoiceKoereq/Services/${{ steps.parse.outputs.feature_id }}Service.swift`
+            
+            #### Android
+            - [ ] `android/.../ui/${{ steps.parse.outputs.feature_id }}Screen.kt`
+            - [ ] `android/.../viewmodel/${{ steps.parse.outputs.feature_id }}ViewModel.kt`
+            - [ ] `android/.../repository/${{ steps.parse.outputs.feature_id }}Repository.kt`
+            
+            #### 共有ロジック
+            - [ ] `shared/.../Repository.kt`
+            - [ ] `shared/.../Models.kt`
+            - [ ] `shared/.../UseCase.kt`
+            
+            #### テスト
+            - [ ] iOS テスト
+            - [ ] Android テスト
+            
+            ### 🔍 レビューポイント
+            - コードの品質とアーキテクチャ
+            - エラーハンドリング
+            - パフォーマンス
+            - 日本語対応
+            
+            ---
+            *This PR was automatically generated by Claude AI*
+          branch: implement/${{ steps.parse.outputs.feature_id }}-${{ github.run_number }}
+          labels: |
+            ${{ steps.parse.outputs.feature_type }}
+            auto-implementation
+            ${{ steps.parse.outputs.feature_id }}
+      
+      - name: Update Issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: ${{ steps.parse.outputs.issue_number }},
+              body: `✅ 実装が完了しました！\n\nPR: #${{ steps.cpr.outputs.pull-request-number }}\n\nレビューをお願いします。`
+            });
+            
+            // Issueに実装完了ラベルを追加
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: ${{ steps.parse.outputs.issue_number }},
+              labels: ['implemented']
+            });

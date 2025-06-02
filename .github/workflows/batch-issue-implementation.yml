@@ -1,0 +1,68 @@
+# .github/workflows/batch-issue-implementation.yml
+name: 🚀 Batch Issue Implementation
+
+on:
+  workflow_dispatch:
+    inputs:
+      issues:
+        description: 'Issue numbers to implement (comma-separated)'
+        required: false
+        default: 'all'
+
+jobs:
+  prepare-issues:
+    runs-on: ubuntu-latest
+    outputs:
+      issue_numbers: ${{ steps.get_issues.outputs.numbers }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Get Issue Numbers
+        id: get_issues
+        uses: actions/github-script@v7
+        with:
+          script: |
+            let issueNumbers = [];
+            
+            if ('${{ github.event.inputs.issues }}' === 'all') {
+              // ready-to-implementラベルがないIssueを取得
+              const issues = await github.rest.issues.listForRepo({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                labels: 'feature',
+                state: 'open'
+              });
+              
+              issueNumbers = issues.data
+                .filter(issue => !issue.labels.some(l => l.name === 'ready-to-implement'))
+                .map(issue => issue.number);
+            } else {
+              issueNumbers = '${{ github.event.inputs.issues }}'.split(',').map(n => n.trim());
+            }
+            
+            core.setOutput('numbers', JSON.stringify(issueNumbers));
+            console.log(`Found ${issueNumbers.length} issues to implement`);
+  
+  implement-issues:
+    needs: prepare-issues
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        issue_number: ${{ fromJson(needs.prepare-issues.outputs.issue_numbers) }}
+      max-parallel: 2
+    steps:
+      - name: Add Label to Trigger Implementation
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: ${{ matrix.issue_number }},
+              labels: ['ready-to-implement']
+            });
+            
+            console.log(`Added ready-to-implement label to issue #${{ matrix.issue_number }}`);
+            
+            // 次のIssueまで少し待機
+            await new Promise(resolve => setTimeout(resolve, 30000)); // 30秒
