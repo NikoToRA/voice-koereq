@@ -1,9 +1,9 @@
 name: 🔄 Create PRs from Claude Branches
 
 on:
-  workflow_dispatch:
+  workflow_dispatch：
   schedule:
-    - cron: '*/10 * * * *'  # 10分ごとに実行
+   # - cron: '*/10 * * * *'  # 10分ごとに実行
 
 permissions:
   contents: write
